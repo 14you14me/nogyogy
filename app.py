@@ -14,7 +14,7 @@ if 'user_name' not in st.session_state:
 if 'symptom_log' not in st.session_state:
     st.session_state.symptom_log = []
 
-# Load models with caching and CPU optimization
+# Load models with caching and CPU optimization for Streamlit Cloud
 @st.cache_resource
 def load_models():
     # Ensure the models are running on CPU using the device=-1 argument for transformers pipeline
@@ -108,7 +108,7 @@ def display_symptom_log():
         st.write("No symptoms have been logged yet.")
 
 def main():
-    st.title("Optimized Gynecology AI Chatbot for CPU")
+    st.title("Optimized Gynecology AI Chatbot for Streamlit Cloud")
 
     # Ask for user's name if not already provided
     if not st.session_state.user_name:
