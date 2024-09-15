@@ -1,27 +1,26 @@
 import streamlit as st
-from transformers import pipeline
+import requests
 from deep_translator import GoogleTranslator
 from langdetect import detect
 from datetime import date
 
-# Initialize session states for conversation, user details, and logged symptoms
-if 'conversation_history' not in st.session_state:
-    st.session_state.conversation_history = []
+# Hugging Face API configuration
+HF_API_URL = "https://api-inference.huggingface.co/models/"
+HF_API_KEY = "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"  
 
-if 'user_name' not in st.session_state:
-    st.session_state.user_name = None
+# Set up headers for Hugging Face API
+headers = {"Authorization": f"Bearer {HF_API_KEY}"}
 
-if 'symptom_log' not in st.session_state:
-    st.session_state.symptom_log = []
-
-# Load smaller models with caching and CPU optimization
-@st.cache_resource
-def load_models():
-    # Use smaller models like distilgpt2 for text generation
-    instruct_model = pipeline("text-generation", model="distilgpt2", device=-1)
-    # Use t5-small as a lightweight text2text model
-    medqa_model = pipeline("text2text-generation", model="t5-small", device=-1)
-    return medqa_model, instruct_model
+# Make a request to the Hugging Face Inference API for text generation
+def generate_text(model_name, prompt):
+    api_url = f"{HF_API_URL}{model_name}"
+    payload = {"inputs": prompt}
+    response = requests.post(api_url, headers=headers, json=payload)
+    if response.status_code == 200:
+        return response.json()[0]["generated_text"]
+    else:
+        st.error(f"Error: Unable to fetch data from Hugging Face API. Status Code: {response.status_code}")
+        return ""
 
 # Translation functions with caching to minimize repeated calls
 @st.cache_data
@@ -109,14 +108,13 @@ def display_symptom_log():
         st.write("No symptoms have been logged yet.")
 
 def main():
-    st.title("Optimized Gynecology AI Chatbot for CPU")
+    st.title("Gynecology AI Chatbot with Hugging Face API")
 
-    # Ask for user's name if not already provided
-    if not st.session_state.user_name:
+    if 'conversation_history' not in st.session_state:
+        st.session_state.conversation_history = []
+
+    if 'user_name' not in st.session_state:
         st.session_state.user_name = st.text_input("What is your name?", "")
-
-    # Load models
-    medqa_model, instruct_model = load_models()
 
     # Input from the user and detected language
     user_input = st.text_area(f"Your question, {st.session_state.user_name}:", "", height=150)
@@ -142,15 +140,13 @@ def main():
         # Detect condition based on input
         detected_condition = detect_condition(translated_input)
 
-        # Combine the conversation history for model input
-        conversation_input = " ".join(st.session_state.conversation_history)
-
-        # Generate response based on conversation history with loading spinner
-        with st.spinner('Generating response...'):
-            if detected_condition:
-                response = medqa_model(conversation_input)[0]['generated_text']
-            else:
-                response = instruct_model(conversation_input)[0]['generated_text']
+        # Generate response using Hugging Face API
+        if detected_condition:
+            model_name = "t5-small"  # You can use a smaller model here
+            response = generate_text(model_name, translated_input)
+        else:
+            model_name = "gpt2"  # Use GPT-2 for general responses
+            response = generate_text(model_name, translated_input)
 
         # Enhance the response with tips, condition-based advice, and doctor reminder
         enhanced_response = enhance_response(response, st.session_state.user_name, detected_lang, detected_condition)
