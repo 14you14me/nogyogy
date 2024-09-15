@@ -2,6 +2,7 @@ import streamlit as st
 from transformers import pipeline
 from deep_translator import GoogleTranslator
 from langdetect import detect
+from datetime import date
 
 # Initialize session states for conversation, user details, and logged symptoms
 if 'conversation_history' not in st.session_state:
@@ -13,21 +14,24 @@ if 'user_name' not in st.session_state:
 if 'symptom_log' not in st.session_state:
     st.session_state.symptom_log = []
 
-# Load models with caching
+# Load models with caching and CPU optimization
 @st.cache_resource
 def load_models():
-    medqa_model = pipeline("text2text-generation", model="emilykang/Phi_medmcqa_question_generation-gynaecology_n_obstetrics_lora")
-    instruct_model = pipeline("text-generation", model="microsoft/Phi-3.5-MoE-instruct")
+    # Ensure the models are running on CPU using the device=-1 argument for transformers pipeline
+    medqa_model = pipeline("text2text-generation", model="emilykang/Phi_medmcqa_question_generation-gynaecology_n_obstetrics_lora", device=-1)
+    instruct_model = pipeline("text-generation", model="microsoft/Phi-3.5-MoE-instruct", device=-1)
     return medqa_model, instruct_model
 
-# Translation functions with caching
+# Translation functions with caching to minimize repeated calls
 @st.cache_data
 def translate_text(text, source_lang, target_lang='en'):
-    try:
-        return GoogleTranslator(source=source_lang, target=target_lang).translate(text)
-    except Exception as e:
-        st.error(f"Translation Error: {e}")
-        return text
+    if source_lang != target_lang:
+        try:
+            return GoogleTranslator(source=source_lang, target=target_lang).translate(text)
+        except Exception as e:
+            st.error(f"Translation Error: {e}")
+            return text
+    return text  # If the source and target languages are the same, avoid unnecessary translation.
 
 # Detect keywords related to gynecology and specific conditions
 def detect_condition(text):
@@ -91,8 +95,8 @@ def enhance_response(response, user_name, detected_lang, condition):
     return response
 
 # Log symptoms for the user
-def log_symptoms(symptom, date):
-    st.session_state.symptom_log.append({"date": date, "symptom": symptom})
+def log_symptoms(symptom, log_date):
+    st.session_state.symptom_log.append({"date": log_date, "symptom": symptom})
 
 # Display symptom log history
 def display_symptom_log():
@@ -104,7 +108,7 @@ def display_symptom_log():
         st.write("No symptoms have been logged yet.")
 
 def main():
-    st.title("Advanced Gynecology AI Chatbot with Symptom Tracking")
+    st.title("Optimized Gynecology AI Chatbot for CPU")
 
     # Ask for user's name if not already provided
     if not st.session_state.user_name:
@@ -118,14 +122,15 @@ def main():
 
     # Optional symptom logging input
     symptom = st.text_input("Log a symptom (optional):")
+    log_date = st.date_input("Date", value=date.today())
     if symptom:
-        log_symptoms(symptom, st.date_input("Date"))
+        log_symptoms(symptom, log_date)
 
     display_symptom_log()
 
     if user_input.strip():
         # Detect language automatically
-        detected_lang = detect_language(user_input)
+        detected_lang = detect(user_input)  # Use langdetect library to detect input language
 
         # Translate input to English
         translated_input = translate_text(user_input, source_lang=detected_lang)
