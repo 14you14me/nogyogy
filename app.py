@@ -14,12 +14,13 @@ if 'user_name' not in st.session_state:
 if 'symptom_log' not in st.session_state:
     st.session_state.symptom_log = []
 
-# Load models with caching and CPU optimization for Streamlit Cloud
+# Load smaller models with caching and CPU optimization
 @st.cache_resource
 def load_models():
-    # Ensure the models are running on CPU using the device=-1 argument for transformers pipeline
-    medqa_model = pipeline("text2text-generation", model="emilykang/Phi_medmcqa_question_generation-gynaecology_n_obstetrics_lora", device=-1)
-    instruct_model = pipeline("text-generation", model="microsoft/Phi-3.5-MoE-instruct", device=-1)
+    # Use smaller models like distilgpt2 for text generation
+    instruct_model = pipeline("text-generation", model="distilgpt2", device=-1)
+    # Use t5-small as a lightweight text2text model
+    medqa_model = pipeline("text2text-generation", model="t5-small", device=-1)
     return medqa_model, instruct_model
 
 # Translation functions with caching to minimize repeated calls
@@ -108,7 +109,7 @@ def display_symptom_log():
         st.write("No symptoms have been logged yet.")
 
 def main():
-    st.title("Optimized Gynecology AI Chatbot for Streamlit Cloud")
+    st.title("Optimized Gynecology AI Chatbot for CPU")
 
     # Ask for user's name if not already provided
     if not st.session_state.user_name:
