@@ -3,21 +3,24 @@ from transformers import pipeline
 from deep_translator import GoogleTranslator
 from langdetect import detect
 
-# Initialize conversation history and user details in Streamlit session state
+# Initialize session states for conversation, user details, and logged symptoms
 if 'conversation_history' not in st.session_state:
     st.session_state.conversation_history = []
 
 if 'user_name' not in st.session_state:
     st.session_state.user_name = None
 
-# Load the required models with caching for performance
+if 'symptom_log' not in st.session_state:
+    st.session_state.symptom_log = []
+
+# Load models with caching
 @st.cache_resource
 def load_models():
     medqa_model = pipeline("text2text-generation", model="emilykang/Phi_medmcqa_question_generation-gynaecology_n_obstetrics_lora")
     instruct_model = pipeline("text-generation", model="microsoft/Phi-3.5-MoE-instruct")
     return medqa_model, instruct_model
 
-# Multilingual translation with caching
+# Translation functions with caching
 @st.cache_data
 def translate_text(text, source_lang, target_lang='en'):
     try:
@@ -26,31 +29,99 @@ def translate_text(text, source_lang, target_lang='en'):
         st.error(f"Translation Error: {e}")
         return text
 
-# Detect keywords related to gynecology and obstetrics
-def is_gyn_related(text):
-    gyn_keywords = ['pregnancy', 'gynecology', 'obstetrics', 'birth', 'fertility', 'contraception', 'menstruation']
-    return any(keyword in text.lower() for keyword in gyn_keywords)
+# Detect keywords related to gynecology and specific conditions
+def detect_condition(text):
+    conditions = {
+        "pregnancy": ["pregnancy", "pregnant", "missed period", "nausea"],
+        "fertility": ["fertility", "ovulation", "infertility", "trying to conceive"],
+        "menstruation": ["period", "menstruation", "irregular periods", "cramps"],
+        "contraception": ["contraception", "birth control", "pills", "condoms"],
+    }
 
-# Automatically detect the input language
-def detect_language(text):
-    try:
-        return detect(text)
-    except Exception as e:
-        st.error(f"Language detection error: {e}")
-        return 'en'  # Default to English if detection fails
+    for condition, keywords in conditions.items():
+        if any(keyword in text.lower() for keyword in keywords):
+            return condition
+    return None
+
+# Follow-up questions based on the condition detected
+def follow_up_questions(condition):
+    questions = {
+        "pregnancy": "Are you experiencing any unusual pain or spotting?",
+        "fertility": "How long have you been trying to conceive?",
+        "menstruation": "Are your periods usually irregular?",
+        "contraception": "Are you using any birth control methods currently?",
+    }
+    return questions.get(condition, None)
+
+# Doctor reminder with localization
+def doctor_reminder(detected_lang):
+    reminder = "Please remember to consult with a healthcare professional for accurate diagnosis and advice."
+    return translate_text(reminder, source_lang="en", target_lang=detected_lang)
+
+# Enhance response based on condition and detected language
+def enhance_response(response, user_name, detected_lang, condition):
+    tips = ""
+
+    if condition == "pregnancy":
+        tips = ("Here are some general tips during pregnancy:\n"
+                "- Stay hydrated\n"
+                "- Eat a balanced diet\n"
+                "- Avoid smoking and alcohol\n"
+                "- Schedule regular prenatal check-ups\n")
+    elif condition == "fertility":
+        tips = ("To improve fertility:\n"
+                "- Maintain a healthy weight\n"
+                "- Track ovulation cycles\n"
+                "- Consider fertility tests if you've been trying to conceive for over a year\n")
+    elif condition == "menstruation":
+        tips = ("Tips for menstrual health:\n"
+                "- Track your cycle to notice any irregularities\n"
+                "- Maintain a balanced diet\n"
+                "- Exercise regularly to reduce cramps\n")
+    elif condition == "contraception":
+        tips = ("General birth control tips:\n"
+                "- Take birth control pills at the same time each day\n"
+                "- Use condoms to protect against STIs\n"
+                "- Consider long-term methods like IUDs or implants if needed\n")
+
+    if tips:
+        response += f"\n\n**Additional Tips for You, {user_name}:**\n{tips}"
+
+    response += f"\n\n*{doctor_reminder(detected_lang)}*"
+    return response
+
+# Log symptoms for the user
+def log_symptoms(symptom, date):
+    st.session_state.symptom_log.append({"date": date, "symptom": symptom})
+
+# Display symptom log history
+def display_symptom_log():
+    if st.session_state.symptom_log:
+        st.write("### Symptom Log History")
+        for entry in st.session_state.symptom_log:
+            st.write(f"- {entry['date']}: {entry['symptom']}")
+    else:
+        st.write("No symptoms have been logged yet.")
 
 def main():
-    st.title("Gynecology AI Chatbot with Doctor Reminder")
-    
+    st.title("Advanced Gynecology AI Chatbot with Symptom Tracking")
+
     # Ask for user's name if not already provided
     if not st.session_state.user_name:
         st.session_state.user_name = st.text_input("What is your name?", "")
-    
+
     # Load models
     medqa_model, instruct_model = load_models()
 
     # Input from the user and detected language
     user_input = st.text_area(f"Your question, {st.session_state.user_name}:", "", height=150)
+
+    # Optional symptom logging input
+    symptom = st.text_input("Log a symptom (optional):")
+    if symptom:
+        log_symptoms(symptom, st.date_input("Date"))
+
+    display_symptom_log()
 
     if user_input.strip():
         # Detect language automatically
@@ -62,24 +133,27 @@ def main():
         # Store the user's question in the conversation history
         st.session_state.conversation_history.append(f"{st.session_state.user_name}: {translated_input}")
 
+        # Detect condition based on input
+        detected_condition = detect_condition(translated_input)
+
         # Combine the conversation history for model input
         conversation_input = " ".join(st.session_state.conversation_history)
 
         # Generate response based on conversation history with loading spinner
         with st.spinner('Generating response...'):
-            if is_gyn_related(translated_input):
+            if detected_condition:
                 response = medqa_model(conversation_input)[0]['generated_text']
             else:
                 response = instruct_model(conversation_input)[0]['generated_text']
 
-        # Append doctor reminder to the response
-        response += "\n\n*Please remember to consult with a healthcare professional for accurate diagnosis and advice.*"
+        # Enhance the response with tips, condition-based advice, and doctor reminder
+        enhanced_response = enhance_response(response, st.session_state.user_name, detected_lang, detected_condition)
 
         # Store the AI's response in the conversation history
-        st.session_state.conversation_history.append(f"AI: {response}")
+        st.session_state.conversation_history.append(f"AI: {enhanced_response}")
 
         # Translate response back to the user's detected language
-        translated_response = translate_text(response, source_lang='en', target_lang=detected_lang)
+        translated_response = translate_text(enhanced_response, source_lang='en', target_lang=detected_lang)
 
         # Display the response
         st.subheader(f"Response (Detected language: {detected_lang}):")
@@ -89,6 +163,13 @@ def main():
         st.subheader("Conversation History")
         for entry in st.session_state.conversation_history:
             st.write(entry)
+
+        # If a condition was detected, ask a follow-up question
+        if detected_condition:
+            follow_up = follow_up_questions(detected_condition)
+            if follow_up:
+                st.subheader("Follow-Up Question")
+                st.write(follow_up)
     else:
         st.write("Please enter a question to get started.")
 
