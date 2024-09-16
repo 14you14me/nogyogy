@@ -3,16 +3,17 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from deep_translator import GoogleTranslator
 from langdetect import detect
 
-# Expanded predefined responses
+# Expanded predefined responses with prioritized specific responses
 predefined_responses = {
-    "pregnant": "If you think you might be pregnant, common early signs include a missed period, nausea, breast tenderness, fatigue, and frequent urination. To confirm, take a home pregnancy test or consult your healthcare provider.",
     "cloves pregnancy": "There is limited research on the effects of consuming cloves during pregnancy. It’s generally considered safe in small amounts used in food. However, consult with your healthcare provider before using cloves in medicinal amounts or supplements while pregnant.",
+    "pregnant": "If you think you might be pregnant, common early signs include a missed period, nausea, breast tenderness, fatigue, and frequent urination. To confirm, take a home pregnancy test or consult your healthcare provider.",
     "ginger pregnancy": "Ginger is commonly used to alleviate nausea and vomiting during pregnancy. However, it's best to consult your healthcare provider before taking ginger supplements in large amounts during pregnancy."
 }
 
 # Function to detect multiple keywords in the user's question
 def detect_keywords(text):
     text_lower = text.lower()
+    # Prioritize more specific keyword combinations like "cloves pregnancy"
     for key, response in predefined_responses.items():
         if all(keyword in text_lower for keyword in key.split()):
             return key
