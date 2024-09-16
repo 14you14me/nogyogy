@@ -3,19 +3,19 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from deep_translator import GoogleTranslator
 from langdetect import detect
 
-# Dictionary of predefined responses for common gynecology-related questions
+# Expanded predefined responses
 predefined_responses = {
     "pregnant": "If you think you might be pregnant, common early signs include a missed period, nausea, breast tenderness, fatigue, and frequent urination. To confirm, take a home pregnancy test or consult your healthcare provider.",
-    "fertility": "Fertility can vary between individuals. If you are trying to conceive and have concerns, consider consulting a fertility specialist to discuss your options.",
-    "period": "Missing your period can be a sign of pregnancy, but stress, diet, and other factors can also play a role. If your period is late, consider taking a pregnancy test or consulting a healthcare provider."
+    "cloves pregnancy": "There is limited research on the effects of consuming cloves during pregnancy. It’s generally considered safe in small amounts used in food. However, consult with your healthcare provider before using cloves in medicinal amounts or supplements while pregnant.",
+    "ginger pregnancy": "Ginger is commonly used to alleviate nausea and vomiting during pregnancy. However, it's best to consult your healthcare provider before taking ginger supplements in large amounts during pregnancy."
 }
 
-# Function to detect keywords in the user's question
+# Function to detect multiple keywords in the user's question
 def detect_keywords(text):
-    keywords = predefined_responses.keys()
-    for keyword in keywords:
-        if keyword in text.lower():
-            return keyword
+    text_lower = text.lower()
+    for key, response in predefined_responses.items():
+        if all(keyword in text_lower for keyword in key.split()):
+            return key
     return None
 
 # Function to translate text to English
@@ -74,7 +74,7 @@ def main():
         # Translate input to English
         translated_input = translate_to_english(user_input, source_lang=detected_lang)
 
-        # Check for keywords in the translated question
+        # Check for multiple keywords in the translated question
         keyword = detect_keywords(translated_input)
         if keyword:
             # Provide predefined structured response
