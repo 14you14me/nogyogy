@@ -1,43 +1,24 @@
 import streamlit as st
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-import torch
+import requests
 
-# Function to load the model and tokenizer with 8-bit quantization
-@st.cache_resource
-def load_model():
-    try:
-        tokenizer = AutoTokenizer.from_pretrained("emilykang/Phi_medner-obstetrics_gynecology")
+HF_API_URL = "https://api-inference.huggingface.co/models/gpt2"
+HF_API_KEY = st.secrets["HF_API_KEY"]  # Store your Hugging Face API key in Streamlit secrets
 
-        # Create a quantization config for 8-bit precision using bitsandbytes
-        quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+headers = {"Authorization": f"Bearer {HF_API_KEY}"}
 
-        # Load the model with 8-bit quantization using bitsandbytes and the quantization config
-        model = AutoModelForCausalLM.from_pretrained(
-            "emilykang/Phi_medner-obstetrics_gynecology",
-            quantization_config=quantization_config,
-            device_map="auto",  # Automatically place layers on available devices
-        )
-        return model, tokenizer
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None, None
-
-# Function to generate text from the model
-def generate_text(model, tokenizer, prompt, max_length=200):
-    inputs = tokenizer(prompt, return_tensors="pt").input_ids
-    outputs = model.generate(inputs, max_length=max_length, pad_token_id=tokenizer.eos_token_id)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+# Function to generate text from Hugging Face Inference API
+def generate_text(prompt):
+    payload = {"inputs": prompt}
+    response = requests.post(HF_API_URL, headers=headers, json=payload)
+    if response.status_code == 200:
+        return response.json()[0]["generated_text"]
+    else:
+        st.error(f"Error: Hugging Face API returned status {response.status_code}")
+        return "Error: Unable to generate response."
 
 # Main Streamlit app
 def main():
     st.title("Gynecology AI Chatbot")
-
-    # Load the model and tokenizer
-    model, tokenizer = load_model()
-
-    if model is None or tokenizer is None:
-        st.error("Failed to load the model.")
-        return
 
     # User input for the chatbot
     user_input = st.text_area("Ask your question about gynecology or obstetrics:", "", height=150)
@@ -45,7 +26,7 @@ def main():
     # If the user provides input, generate a response
     if user_input:
         with st.spinner("Generating response..."):
-            response = generate_text(model, tokenizer, user_input)
+            response = generate_text(user_input)
         st.write(response)
 
 if __name__ == "__main__":
