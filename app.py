@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from deep_translator import GoogleTranslator
 from langdetect import detect
 import re  # For output sanitization
@@ -18,10 +18,12 @@ def detect_keywords(text):
             return key
     return None
 
-# Function to sanitize the model's response output (remove unwanted tags)
+# Function to sanitize the model's response output (remove unwanted tags and tokens)
 def sanitize_output(text):
-    # Remove common unwanted HTML-like tags and special characters
-    cleaned_text = re.sub(r"</?FREETEXT>|</?TITLE>|▃", "", text)
+    # Remove all HTML-like tags
+    cleaned_text = re.sub(r'<[^>]+>', '', text)  # Removes anything inside < >
+    # Remove specific unwanted tokens or special characters
+    cleaned_text = re.sub(r'[<>▃]', '', cleaned_text)  # Removes specific tokens like < > ▃
     return cleaned_text.strip()
 
 # Function to check if the question is relevant to gynecology
@@ -46,32 +48,32 @@ def translate_to_original(text, target_lang='auto'):
         st.error(f"Translation to original language failed: {e}")
         return text
 
-# Function to generate text using a medical model (BioGPT or similar)
-def generate_medical_answer(model, tokenizer, prompt, max_length=200):
+# Function to generate text using a general-purpose model (T5-small or similar)
+def generate_general_answer(model, tokenizer, prompt, max_length=200):
     inputs = tokenizer(prompt, return_tensors="pt").input_ids
     outputs = model.generate(inputs, max_length=max_length, pad_token_id=tokenizer.eos_token_id)
     return sanitize_output(tokenizer.decode(outputs[0], skip_special_tokens=True))
 
-# Load the medical language model (e.g., BioGPT from Hugging Face)
+# Load the general-purpose model (e.g., T5-small from Hugging Face)
 @st.cache_resource
-def load_medical_model():
+def load_general_model():
     try:
-        tokenizer = AutoTokenizer.from_pretrained("microsoft/BioGPT-Large")
-        model = AutoModelForCausalLM.from_pretrained("microsoft/BioGPT-Large")
+        tokenizer = AutoTokenizer.from_pretrained("t5-small")
+        model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
         return model, tokenizer
     except Exception as e:
-        st.error(f"Error loading medical model: {e}")
+        st.error(f"Error loading general model: {e}")
         return None, None
 
 # Main Streamlit app
 def main():
     st.title("Gynecology AI Chatbot")
 
-    # Load the medical model and tokenizer
-    model, tokenizer = load_medical_model()
+    # Load the general-purpose model and tokenizer
+    model, tokenizer = load_general_model()
 
     if model is None or tokenizer is None:
-        st.error("Failed to load the medical model.")
+        st.error("Failed to load the model.")
         return
 
     # User input for the chatbot
@@ -97,9 +99,9 @@ def main():
             # Provide predefined structured response
             response = predefined_responses[keyword]
         else:
-            # If no predefined answer, use the medical language model for general medical questions
-            with st.spinner("Generating a medical response for your question..."):
-                response = generate_medical_answer(model, tokenizer, translated_input)
+            # If no predefined answer, use the general-purpose model for generating a response
+            with st.spinner("Generating a response for your question..."):
+                response = generate_general_answer(model, tokenizer, translated_input)
 
         # Translate response back to the original language
         translated_response = translate_to_original(response, target_lang=detected_lang)
