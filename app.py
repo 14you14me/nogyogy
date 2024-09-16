@@ -21,19 +21,19 @@ def generate_text(model, tokenizer, prompt, max_length=200):
     outputs = model.generate(inputs, max_length=max_length, pad_token_id=tokenizer.eos_token_id)
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-# Function to translate text to English
-def translate_to_english(text, source_lang='auto'):
+# Function to translate text to English explicitly
+def translate_to_english(text, source_lang='hu'):
     try:
-        # Ensure correct target language is always English
+        # Always set target language to English
         return GoogleTranslator(source=source_lang, target='en').translate(text)
     except Exception as e:
         st.error(f"Translation to English failed: {e}")
         return text
 
-# Function to translate text back to the original language
-def translate_to_original(text, target_lang='auto'):
+# Function to translate text back to Hungarian or the original language
+def translate_to_original(text, target_lang='hu'):
     try:
-        # Ensure translation back to original language
+        # Always set source language to English and target language to detected language
         return GoogleTranslator(source='en', target=target_lang).translate(text)
     except Exception as e:
         st.error(f"Translation to original language failed: {e}")
@@ -59,18 +59,22 @@ def main():
         detected_lang = detect(user_input)
         st.write(f"Detected language: {detected_lang}")
 
-        # Translate input to English (explicitly targeting English)
-        translated_input = translate_to_english(user_input, source_lang=detected_lang)
+        # Only proceed if the detected language is Hungarian
+        if detected_lang == 'hu':
+            # Translate input to English (explicitly from Hungarian to English)
+            translated_input = translate_to_english(user_input, source_lang=detected_lang)
 
-        # Generate response
-        with st.spinner("Generating response..."):
-            response = generate_text(model, tokenizer, translated_input)
+            # Generate response
+            with st.spinner("Generating response..."):
+                response = generate_text(model, tokenizer, translated_input)
 
-        # Translate response back to the original language (detected language)
-        translated_response = translate_to_original(response, target_lang=detected_lang)
+            # Translate response back to Hungarian
+            translated_response = translate_to_original(response, target_lang=detected_lang)
 
-        # Display the response
-        st.write(translated_response)
+            # Display the response
+            st.write(translated_response)
+        else:
+            st.write("Currently, only Hungarian language is supported for this bot.")
 
 if __name__ == "__main__":
     main()
