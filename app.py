@@ -2,6 +2,7 @@ import streamlit as st
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from deep_translator import GoogleTranslator
 from langdetect import detect
+import re  # For output sanitization
 
 # Predefined responses for common gynecology-related questions (including specific substances like cloves)
 predefined_responses = {
@@ -16,6 +17,12 @@ def detect_keywords(text):
         if all(keyword in text_lower for keyword in key.split()):
             return key
     return None
+
+# Function to sanitize the model's response output (remove unwanted tags)
+def sanitize_output(text):
+    # Remove common unwanted HTML-like tags and special characters
+    cleaned_text = re.sub(r"</?FREETEXT>|</?TITLE>|▃", "", text)
+    return cleaned_text.strip()
 
 # Function to check if the question is relevant to gynecology
 def is_relevant_to_gynecology(text):
@@ -43,7 +50,7 @@ def translate_to_original(text, target_lang='auto'):
 def generate_medical_answer(model, tokenizer, prompt, max_length=200):
     inputs = tokenizer(prompt, return_tensors="pt").input_ids
     outputs = model.generate(inputs, max_length=max_length, pad_token_id=tokenizer.eos_token_id)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return sanitize_output(tokenizer.decode(outputs[0], skip_special_tokens=True))
 
 # Load the medical language model (e.g., BioGPT from Hugging Face)
 @st.cache_resource
