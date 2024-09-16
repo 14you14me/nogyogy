@@ -3,9 +3,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from deep_translator import GoogleTranslator
 from langdetect import detect
 
-# Predefined responses for common gynecology-related questions
+# Predefined responses for common gynecology-related questions (including specific substances like cloves)
 predefined_responses = {
-    "cloves pregnancy": "There is limited research on the effects of consuming cloves during pregnancy. It’s generally considered safe in small amounts used in food. However, consult with your healthcare provider before using cloves in medicinal amounts or supplements while pregnant.",
+    "cloves pregnancy": "There is limited research on the effects of consuming cloves during pregnancy. In small amounts used in food, cloves are generally considered safe. However, you should consult your healthcare provider before using cloves in large medicinal quantities or supplements during pregnancy.",
     "pregnancy": "If you think you might be pregnant, common early signs include a missed period, nausea, breast tenderness, fatigue, and frequent urination. To confirm, take a home pregnancy test or consult your healthcare provider."
 }
 
