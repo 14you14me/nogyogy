@@ -1,6 +1,7 @@
 import streamlit as st
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from deep_translator import GoogleTranslator
+from langdetect import detect
 import torch
 
 # Function to load the GPT-2 model and tokenizer
@@ -52,8 +53,8 @@ def main():
 
     # If the user provides input, detect the language and translate if needed
     if user_input:
-        # Detect the input language automatically
-        detected_lang = GoogleTranslator(source='auto', target='en').detect(user_input)
+        # Detect the input language automatically using langdetect
+        detected_lang = detect(user_input)
         st.write(f"Detected language: {detected_lang}")
 
         # Translate input to English
