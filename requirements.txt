@@ -4,3 +4,4 @@ torch
 deep-translator
 langdetect
 peft
+bitsandbytes

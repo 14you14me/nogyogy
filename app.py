@@ -1,12 +1,19 @@
 import streamlit as st
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 
-# Function to load the model and tokenizer
+# Function to load the model and tokenizer with 8-bit quantization
 @st.cache_resource
 def load_model():
     try:
         tokenizer = AutoTokenizer.from_pretrained("emilykang/Phi_medner-obstetrics_gynecology")
-        model = AutoModelForCausalLM.from_pretrained("emilykang/Phi_medner-obstetrics_gynecology")
+        
+        # Load the model with 8-bit quantization using bitsandbytes
+        model = AutoModelForCausalLM.from_pretrained(
+            "emilykang/Phi_medner-obstetrics_gynecology", 
+            load_in_8bit=True,  # Apply 8-bit quantization
+            device_map="auto",   # Automatically place layers on available devices
+        )
         return model, tokenizer
     except Exception as e:
         st.error(f"Error loading model: {e}")
