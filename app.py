@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer
 from deep_translator import GoogleTranslator
 from langdetect import detect
 import re
@@ -58,12 +58,12 @@ def generate_fallback_answer(fallback_model, fallback_tokenizer, prompt, max_len
     outputs = fallback_model.generate(inputs, max_length=max_length, pad_token_id=fallback_tokenizer.eos_token_id)
     return sanitize_output(fallback_tokenizer.decode(outputs[0], skip_special_tokens=True))
 
-# Load the gynecology-specific model
+# Load the gynecology-specific model (e.g., BioGPT for causal LM)
 @st.cache_resource
 def load_gynecology_model():
     try:
         tokenizer = AutoTokenizer.from_pretrained("microsoft/BioGPT-Large")
-        model = AutoModelForSeq2SeqLM.from_pretrained("microsoft/BioGPT-Large")
+        model = AutoModelForCausalLM.from_pretrained("microsoft/BioGPT-Large")
         return model, tokenizer
     except Exception as e:
         st.error(f"Error loading gynecology-specific model: {e}")
