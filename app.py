@@ -2,14 +2,13 @@ import streamlit as st
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from deep_translator import GoogleTranslator
 from langdetect import detect
-import torch
 
-# Function to load the medical gynecology model and tokenizer
+# Function to load the T5-small model and tokenizer
 @st.cache_resource
 def load_model():
     try:
-        tokenizer = AutoTokenizer.from_pretrained("emilykang/Phi_medmcqa_question_generation-gynaecology_n_obstetrics_lora")
-        model = AutoModelForSeq2SeqLM.from_pretrained("emilykang/Phi_medmcqa_question_generation-gynaecology_n_obstetrics_lora")
+        tokenizer = AutoTokenizer.from_pretrained("t5-small")
+        model = AutoModelForSeq2SeqLM.from_pretrained("t5-small")
         return model, tokenizer
     except Exception as e:
         st.error(f"Error loading model: {e}")
