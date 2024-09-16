@@ -2,6 +2,7 @@ import streamlit as st
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from deep_translator import GoogleTranslator
 from langdetect import detect
+import torch
 
 # Function to load the T5-small model and tokenizer
 @st.cache_resource
@@ -23,6 +24,7 @@ def generate_text(model, tokenizer, prompt, max_length=200):
 # Function to translate text to English
 def translate_to_english(text, source_lang='auto'):
     try:
+        # Ensure correct target language is always English
         return GoogleTranslator(source=source_lang, target='en').translate(text)
     except Exception as e:
         st.error(f"Translation to English failed: {e}")
@@ -31,6 +33,7 @@ def translate_to_english(text, source_lang='auto'):
 # Function to translate text back to the original language
 def translate_to_original(text, target_lang='auto'):
     try:
+        # Ensure translation back to original language
         return GoogleTranslator(source='en', target=target_lang).translate(text)
     except Exception as e:
         st.error(f"Translation to original language failed: {e}")
@@ -56,14 +59,14 @@ def main():
         detected_lang = detect(user_input)
         st.write(f"Detected language: {detected_lang}")
 
-        # Translate input to English
+        # Translate input to English (explicitly targeting English)
         translated_input = translate_to_english(user_input, source_lang=detected_lang)
 
         # Generate response
         with st.spinner("Generating response..."):
             response = generate_text(model, tokenizer, translated_input)
 
-        # Translate response back to the original language
+        # Translate response back to the original language (detected language)
         translated_response = translate_to_original(response, target_lang=detected_lang)
 
         # Display the response
