@@ -17,6 +17,12 @@ def detect_keywords(text):
             return key
     return None
 
+# Function to check if the question is relevant to gynecology
+def is_relevant_to_gynecology(text):
+    gynecology_keywords = ["pregnancy", "fertility", "period", "contraception", "gynecology", "pregnant", "birth control", "obstetrics", "miscarriage", "baby", "menstruation"]
+    text_lower = text.lower()
+    return any(keyword in text_lower for keyword in gynecology_keywords)
+
 # Function to translate text to English
 def translate_to_english(text, source_lang='auto'):
     try:
@@ -72,6 +78,11 @@ def main():
 
         # Translate input to English
         translated_input = translate_to_english(user_input, source_lang=detected_lang)
+
+        # Check if the question is related to gynecology
+        if not is_relevant_to_gynecology(translated_input):
+            st.write("It seems like your question is not related to gynecology or obstetrics. Please ask a question related to these topics.")
+            return
 
         # Check for multiple keywords in the translated question
         keyword = detect_keywords(translated_input)
