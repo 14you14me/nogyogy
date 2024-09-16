@@ -117,8 +117,8 @@ def main():
             with st.spinner("Generating a response using the gynecology-specific model..."):
                 response = generate_gynecology_answer(gynecology_model, gynecology_tokenizer, translated_input)
 
-            # If the response seems off-topic, fallback to the general model
-            if "abortion" in response.lower() or not response.strip():
+            # If the response seems like a rephrasing of the input or is unclear, fallback to general model
+            if "?" in response or response.lower() == translated_input.lower():
                 with st.spinner("Fallback to the general model..."):
                     response = generate_fallback_answer(fallback_model, fallback_tokenizer, translated_input)
 
