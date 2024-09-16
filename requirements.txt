@@ -5,3 +5,4 @@ deep-translator
 langdetect
 peft
 bitsandbytes
+sacremoses
